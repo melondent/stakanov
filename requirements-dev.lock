@@ -10,3 +10,64 @@
 #   universal: false
 
 -e file:.
+asgiref==3.8.1
+    # via django
+datetime==5.5
+    # via stakanov
+django==5.1.4
+    # via django-db
+    # via django-urls
+    # via stakanov
+django-apps==0.1.0
+    # via stakanov
+django-db==0.0.7
+    # via stakanov
+django-shortcuts==1.6
+    # via stakanov
+django-test==0.4030
+    # via stakanov
+django-urls==1.1.4
+    # via stakanov
+docx==0.2.4
+    # via stakanov
+et-xmlfile==2.0.0
+    # via openpyxl
+humanize==4.11.0
+    # via stakanov
+logging==0.4.9.6
+    # via stakanov
+lxml==5.3.0
+    # via docx
+mutagen==1.47.0
+    # via stakanov
+numpy==2.2.0
+    # via pandas
+openpyxl==3.1.5
+    # via stakanov
+pandas==2.2.3
+    # via stakanov
+pillow==11.0.0
+    # via docx
+pymysql==1.1.1
+    # via django-db
+pypdf2==3.0.1
+    # via stakanov
+python-dateutil==2.9.0.post0
+    # via pandas
+pytz==2024.2
+    # via datetime
+    # via pandas
+setuptools==75.6.0
+    # via zope-interface
+six==1.17.0
+    # via python-dateutil
+sqlparse==0.5.3
+    # via django
+tk==0.1.0
+    # via stakanov
+tqdm==4.67.1
+    # via stakanov
+tzdata==2024.2
+    # via pandas
+zope-interface==7.2
+    # via datetime

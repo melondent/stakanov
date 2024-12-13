@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Статистика по PDF-файлам</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #fff0f5;
+            color: #6d6875;
+        }
+        .sidebar {
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #f8bbd0;
+            padding: 20px;
+            width: 250px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar h3 {
+            color: #4a4e69;
+        }
+        .nav-link {
+            color: #6d6875;
+        }
+        .nav-link:hover {
+            color: #b5838d;
+        }
+        .content {
+            margin-left: 270px;
+            padding: 20px;
+        }
+        .table {
+            background-color: #ffebee;
+        }
+        .table th {
+            background-color: #f8bbd0;
+            color: #4a4e69;
+        }
+        .table td {
+            color: #6d6875;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h3>Меню</h3>
+        <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link" href="/">Главная</a></li>
+            <li class="nav-item"><a class="nav-link" href="/extension/">Статистика по расширениям</a></li>
+            <li class="nav-item"><a class="nav-link" href="/size/">Топ файлов</a></li>
+            <li class="nav-item"><a class="nav-link" href="/image/">Топ изображений</a></li>
+            <li class="nav-item"><a class="nav-link" href="/pdf/">Топ документов</a></li>
+        </ul>
+    </div>
+    <div class="content">
+        <h1>Статистика по PDF-файлам</h1>
+        
+        <h2>Общий объем проиндексированных файлов</h2>
+        <p>{{ total_size|floatformat:2 }} ГБ</p>
+
+        <h2>Объем файлов за последний запуск:</h2>
+        <p>{{ total_size_last|floatformat:2 }} ГБ</p>
+
+        <h2>Топ 10 документов по количеству страниц</h2>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Путь</th>
+                    <th>Количество страниц</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for document in top_documents %}
+                    <tr>
+                        <td>{{ document.name }}</td>
+                        <td>{{ document.path }}</td>
+                        <td>{{ document.pages }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>График: Количество страниц в топ 10 документах</h2>
+        <canvas id="pagesChart" width="400" height="200"></canvas>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('pagesChart').getContext('2d');
+        const pagesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [{% for document in top_documents %}'{{ document.name }}',{% endfor %}],
+                datasets: [{
+                    label: 'Количество страниц',
+                    data: [{% for document in top_documents %}{{ document.pages }},{% endfor %}],
+                    backgroundColor: '#f8bbd0',
+                    borderColor: '#f06292',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-from stakanov import Indiana
+from stakanov_logic import Indiana
 import tkinter as tk
 from tkinter import filedialog, messagebox, Text, ttk
 
@@ -79,9 +79,10 @@ class stakanovApp:
 
             self.progress_bar['value'] = 0
             self.progress_bar['maximum'] = len(list(indi.guide.files()))
-
-            def update_progress(count):
-                self.progress_bar['value'] = count
+                
+            def update_progress(count, total_files):
+                progress = int(count / total_files * 100)
+                self.progress_bar['value'] = progress
                 self.master.update_idletasks()
 
             indi.find_loot(update_progress)

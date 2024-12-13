@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 from os.path import join, getsize, getctime, getmtime
 from tqdm import tqdm
@@ -12,6 +11,9 @@ import cv2
 import humanize
 import tkinter as tk
 import logging
+import os
+from files.models import FileInfo
+from django.utils.timezone import make_aware
 
 class Logger:
     def __init__(self, log_file='stakanov.log'):
@@ -50,9 +52,14 @@ class Indiana:
         self.viewer = Displayer(output_file)
 
     def find_loot(self, progress_callback=None):
-        total_files = sum(1 for _ in self.guide.files())
-        progress_callback(total_files)
-        
+        total_files = sum(1 for _ in self.guide.files())  # Получаем общее количество файлов
+        processed_files = 0  # Переменная для отслеживания обработанных файлов
+
+        # Если прогресс-колбэк передан, инициализируем прогресс
+        if progress_callback:
+            progress_callback(processed_files, total_files)
+
+        # Итерация по файлам
         for file in tqdm(self.guide.files(), total=total_files):
             file_info = {}
             for researcher in self.researchers:
@@ -60,12 +67,17 @@ class Indiana:
                     file_info.update(researcher.get_info(file))
                 except Exception as e:
                     self.logger.log_exception(f"Ошибка при обработке файла {file}: {str(e)}")
+
             if file_info:
                 file_info['file_path'] = file
                 self.data.append(file_info)
-                
-            if progress_callback: 
-                progress_callback(len(self.data))
+
+        # Обновление прогресса, если колбэк передан
+            processed_files += 1
+            if progress_callback:
+                # Передаем текущий прогресс в процентах (или количестве обработанных файлов)
+                progress_callback(processed_files, total_files)
+
                 
     def save_results(self):
         self.csv_saver.save_scv(self.data)
@@ -73,6 +85,40 @@ class Indiana:
     def display_results(self):
         self.viewer.display()
         
+    def save_to_db(self, run_id):
+        for file_info in self.data:
+            try:
+                created_at = None
+                modified_at = None
+
+                if file_info['created']:
+                    created_at = datetime.strptime(file_info['created'], "%Y-%m-%d %H:%M:%S")
+                    created_at = make_aware(created_at)
+
+                if file_info['modified']:
+                    modified_at = datetime.strptime(file_info['modified'], "%Y-%m-%d %H:%M:%S")
+                    modified_at = make_aware(modified_at)
+                
+                FileInfo.objects.create(
+                    name=file_info['name'],
+                    path=file_info['file_path'],
+                    size=file_info['size'],
+                    extension=file_info['extension'],
+                    created_at=created_at,
+                    modified_at=modified_at,
+                    width=file_info.get('width', None),
+                    height=file_info.get('height', None),
+                    area=file_info.get('area', None),
+                    dpi=file_info.get('dpi', None),
+                    exif_data=str(file_info.get('exif', None)),
+                    pages=file_info.get('pages', None),
+                    format=file_info.get('format', None),
+                    orientation=file_info.get('orientation', None),
+                    run_id=run_id
+                )
+            except Exception as e:
+                self.logger.log_exception(f"Ошибка при сохранении файла {file_info.get('name', 'unknown')}: {str(e)}")
+
 
 class GeneralResearcher:
     def get_info(self, file):
@@ -98,13 +144,14 @@ class ImageResearcher:
             img_pil = Image.open(file)
             dpi = img_pil.info.get('dpi', (None, None))
             if dpi != (None, None):
-                dpi = (round(dpi[0]), round(dpi[1]))
+                dpi = (round(dpi[0]))
             exif_data = img_pil._getexif()
             
             return {
                 'width': width,
                 'height': height,
-                'dpi': dpi if dpi != (None, None) else 'No DPI data',
+                'area': width * height, 
+                'dpi': dpi if dpi != (None, None) else None,
                 'exif': exif_data if exif_data else 'No EXIF data'
             }
     
