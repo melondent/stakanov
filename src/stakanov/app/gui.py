@@ -1,4 +1,4 @@
-from stakanov_logic import Indiana
+from stakanov import Indiana
 import tkinter as tk
 from tkinter import filedialog, messagebox, Text, ttk
 

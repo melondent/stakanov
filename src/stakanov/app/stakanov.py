@@ -12,7 +12,6 @@ import humanize
 import tkinter as tk
 import logging
 import os
-from collect.database_saver import DatabaseSaver
 
 class Logger:
     def __init__(self, log_file='stakanov.log'):
@@ -49,7 +48,6 @@ class Indiana:
         self.data = []
         self.csv_saver = Saver(output_file)
         self.viewer = Displayer(output_file)
-        self.db_saver = DatabaseSaver(self.logger)
 
     def find_loot(self, progress_callback=None):
         total_files = sum(1 for _ in self.guide.files())  
@@ -80,9 +78,6 @@ class Indiana:
     
     def display_results(self):
         self.viewer.display()
-        
-    def save_to_db(self, run_id):
-        self.db_saver.save_to_db(self.data, run_id)
 
 class GeneralResearcher:
     def get_info(self, file):
