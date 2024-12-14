@@ -6,8 +6,6 @@
 
 ## Запуск веб приложения.
 
-Из папки stakanov:
-
 `python3 src/stakanov/manage.py runserver`
 
 
