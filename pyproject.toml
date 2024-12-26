@@ -1,0 +1,41 @@
+[project]
+name = "stakanov"
+version = "0.1.0"
+description = "Add your description here"
+authors = [
+    { name = "Anna", email = "melondent0103@gmail.com" }
+]
+dependencies = [
+    "pandas>=2.2.3",
+    "tqdm>=4.67.1",
+    "datetime>=5.5",
+    "pypdf2>=3.0.1",
+    "docx>=0.2.4",
+    "openpyxl>=3.1.5",
+    "mutagen>=1.47.0",
+    "humanize>=4.11.0",
+    "tk>=0.1.0",
+    #"logging>=0.4.9.6",
+    "django>=5.1.4",
+    "django-db>=0.0.7",
+    "django-apps>=0.1.0",
+    "django-test>=0.4030",
+    "django-shortcuts>=1.6",
+    "django-urls>=1.1.4",
+]
+readme = "README.md"
+requires-python = ">= 3.8"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stakanov"]

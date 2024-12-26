@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>collect.stakanov_logic &#8212; stakanov 1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=29a6c3e3"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for collect.stakanov_logic</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="kn">import</span> <span class="n">join</span><span class="p">,</span> <span class="n">getsize</span><span class="p">,</span> <span class="n">getctime</span><span class="p">,</span> <span class="n">getmtime</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">PyPDF2</span> <span class="kn">import</span> <span class="n">PdfReader</span>
+<span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span> <span class="nn">docx</span> <span class="kn">import</span> <span class="n">Document</span>
+<span class="kn">from</span> <span class="nn">openpyxl</span> <span class="kn">import</span> <span class="n">load_workbook</span>
+<span class="kn">from</span> <span class="nn">mutagen.mp3</span> <span class="kn">import</span> <span class="n">MP3</span>
+<span class="kn">import</span> <span class="nn">cv2</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">collect.database_saver</span> <span class="kn">import</span> <span class="n">DatabaseSaver</span>
+
+<div class="viewcode-block" id="Logger">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Logger">[docs]</a>
+<span class="k">class</span> <span class="nc">Logger</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Logger class to handle logging of errors and exceptions. Logs messages</span>
+<span class="sd">    with a timestamp to a specified log file.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        logger: The logger object used to log messages.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">log_file</span><span class="o">=</span><span class="s1">&#39;stakanov.log&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the logger.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            log_file (str): The path of the log file (default: &#39;stakanov.log&#39;).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+            <span class="n">filename</span><span class="o">=</span><span class="n">log_file</span><span class="p">,</span>
+            <span class="nb">format</span><span class="o">=</span><span class="s1">&#39;</span><span class="si">%(asctime)s</span><span class="s1"> - </span><span class="si">%(levelname)s</span><span class="s1"> - </span><span class="si">%(message)s</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="n">datefmt</span><span class="o">=</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Logger.log_exception">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Logger.log_exception">[docs]</a>
+    <span class="k">def</span> <span class="nf">log_exception</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Logs an exception message to the log file.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="Guide">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Guide">[docs]</a>
+<span class="k">class</span> <span class="nc">Guide</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A class that helps to guide through all the files in a given directory.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        path (str): The path to the directory to scan for files.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize the guide.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path (str): The path to the directory to scan for files.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        
+<div class="viewcode-block" id="Guide.files">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Guide.files">[docs]</a>
+    <span class="k">def</span> <span class="nf">files</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Generator that yields each file in the specified directory and its</span>
+<span class="sd">        subdirectories.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">root</span><span class="p">,</span> <span class="n">dirs</span><span class="p">,</span> <span class="n">files</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">walk</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+                <span class="k">yield</span> <span class="n">join</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span></div>
+</div>
+
+                
+<div class="viewcode-block" id="Indiana">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Indiana">[docs]</a>
+<span class="k">class</span> <span class="nc">Indiana</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Main class for scanning files and gathering their information.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        logger (Logger): The logger instance to log exceptions.</span>
+<span class="sd">        guide (Guide): The Guide instance to traverse files in the specified path.</span>
+<span class="sd">        researchers (list): List of researchers to gather file information.</span>
+<span class="sd">        output_file (str): The output file where results will be saved.</span>
+<span class="sd">        data (list): A list to store information about processed files.</span>
+<span class="sd">        csv_saver (Saver): The instance responsible for saving results to a CSV file.</span>
+<span class="sd">        viewer (Displayer): The instance responsible for displaying results.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span>  <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">output_file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes the Indiana class with the directory path and output</span>
+<span class="sd">        file name.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path (str): The path to scan for files.</span>
+<span class="sd">            output_file (str): The name of the output file to save results.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">Logger</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">guide</span> <span class="o">=</span> <span class="n">Guide</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">researchers</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">GeneralResearcher</span><span class="p">(),</span> <span class="n">PDFResearcher</span><span class="p">(),</span> <span class="n">ImageResearcher</span><span class="p">(),</span> 
+            <span class="n">DocResearcher</span><span class="p">(),</span> <span class="n">ExcelResearcher</span><span class="p">(),</span> <span class="n">AudioResearcher</span><span class="p">(),</span> 
+            <span class="n">VideoResearcher</span><span class="p">()</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span> <span class="o">=</span> <span class="n">output_file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">csv_saver</span> <span class="o">=</span> <span class="n">Saver</span><span class="p">(</span><span class="n">output_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">viewer</span> <span class="o">=</span> <span class="n">Displayer</span><span class="p">(</span><span class="n">output_file</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db_saver</span> <span class="o">=</span> <span class="n">DatabaseSaver</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Indiana.find_loot">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Indiana.find_loot">[docs]</a>
+    <span class="k">def</span> <span class="nf">find_loot</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">progress_callback</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Scans all files in the specified directory, gathering information</span>
+<span class="sd">        using different researchers.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            progress_callback (function, optional): A callback function to update progress.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">total_files</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="mi">1</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">guide</span><span class="o">.</span><span class="n">files</span><span class="p">())</span>  
+        <span class="n">processed_files</span> <span class="o">=</span> <span class="mi">0</span>  
+    
+        <span class="k">if</span> <span class="n">progress_callback</span><span class="p">:</span>
+            <span class="n">progress_callback</span><span class="p">(</span><span class="n">processed_files</span><span class="p">,</span> <span class="n">total_files</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">guide</span><span class="o">.</span><span class="n">files</span><span class="p">(),</span> <span class="n">total</span><span class="o">=</span><span class="n">total_files</span><span class="p">):</span>
+            <span class="n">file_info</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">researcher</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">researchers</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">file_info</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">researcher</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="n">file</span><span class="p">))</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">log_exception</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Ошибка при обработке файла </span><span class="si">{</span><span class="n">file</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">file_info</span><span class="p">:</span>
+                <span class="n">file_info</span><span class="p">[</span><span class="s1">&#39;file_path&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">file</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_info</span><span class="p">)</span>
+
+            <span class="n">processed_files</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">if</span> <span class="n">progress_callback</span><span class="p">:</span>
+                <span class="n">progress_callback</span><span class="p">(</span><span class="n">processed_files</span><span class="p">,</span> <span class="n">total_files</span><span class="p">)</span></div>
+
+
+                
+<div class="viewcode-block" id="Indiana.save_results">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Indiana.save_results">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Saves data into the output CSV file.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">csv_saver</span><span class="o">.</span><span class="n">save_scv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="Indiana.display_results">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Indiana.display_results">[docs]</a>
+    <span class="k">def</span> <span class="nf">display_results</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Displays the results in the viewer.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">viewer</span><span class="o">.</span><span class="n">display</span><span class="p">()</span></div>
+
+        
+<div class="viewcode-block" id="Indiana.save_to_db">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Indiana.save_to_db">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_to_db</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">run_id</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Saves the results in the database.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">db_saver</span><span class="o">.</span><span class="n">save_to_db</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">run_id</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="GeneralResearcher">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.GeneralResearcher">[docs]</a>
+<span class="k">class</span> <span class="nc">GeneralResearcher</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A researcher that gathers general information about a file, including</span>
+<span class="sd">    size, name, extension, and timestamps.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="GeneralResearcher.get_info">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.GeneralResearcher.get_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gathers general information about a file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file (str): The path to the file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary containing general file information (name, extension, size, created, modified).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">size</span> <span class="o">=</span> <span class="n">getsize</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">file</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">extension</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">file</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+            <span class="s1">&#39;extension&#39;</span><span class="p">:</span> <span class="n">extension</span><span class="p">,</span>
+            <span class="s1">&#39;size&#39;</span><span class="p">:</span> <span class="n">size</span><span class="p">,</span>
+            <span class="s1">&#39;created&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">getctime</span><span class="p">(</span><span class="n">file</span><span class="p">))</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">),</span>
+            <span class="s1">&#39;modified&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">getmtime</span><span class="p">(</span><span class="n">file</span><span class="p">))</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
+        <span class="p">}</span></div>
+</div>
+
+        
+    
+<div class="viewcode-block" id="ImageResearcher">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.ImageResearcher">[docs]</a>
+<span class="k">class</span> <span class="nc">ImageResearcher</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A researcher that gathers information about image files.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="ImageResearcher.get_info">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.ImageResearcher.get_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Gathers information about an image file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file (str): The path to the image file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary containing image information (width, height, area, dpi, exif).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpeg&#39;</span><span class="p">,</span> <span class="s1">&#39;.gif&#39;</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="p">{}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">img</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+            <span class="n">img_pil</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="n">dpi</span> <span class="o">=</span> <span class="n">img_pil</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;dpi&#39;</span><span class="p">,</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">dpi</span> <span class="o">!=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">):</span>
+                <span class="n">dpi</span> <span class="o">=</span> <span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">dpi</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+            <span class="n">exif_data</span> <span class="o">=</span> <span class="n">img_pil</span><span class="o">.</span><span class="n">_getexif</span><span class="p">()</span>
+            
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;width&#39;</span><span class="p">:</span> <span class="n">width</span><span class="p">,</span>
+                <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="n">height</span><span class="p">,</span>
+                <span class="s1">&#39;area&#39;</span><span class="p">:</span> <span class="n">width</span> <span class="o">*</span> <span class="n">height</span><span class="p">,</span> 
+                <span class="s1">&#39;dpi&#39;</span><span class="p">:</span> <span class="n">dpi</span> <span class="k">if</span> <span class="n">dpi</span> <span class="o">!=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s1">&#39;exif&#39;</span><span class="p">:</span> <span class="n">exif_data</span> <span class="k">if</span> <span class="n">exif_data</span> <span class="k">else</span> <span class="s1">&#39;No EXIF data&#39;</span>
+            <span class="p">}</span></div>
+</div>
+
+    
+<div class="viewcode-block" id="DocResearcher">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.DocResearcher">[docs]</a>
+<span class="k">class</span> <span class="nc">DocResearcher</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A researcher that gathers information about doc files.&quot;&quot;&quot;</span>
+    <span class="n">DOC_PAGE_SIZES</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;A0&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">841</span><span class="p">,</span> <span class="mi">1189</span><span class="p">),</span>
+        <span class="s1">&#39;A1&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">594</span><span class="p">,</span> <span class="mi">841</span><span class="p">),</span>
+        <span class="s1">&#39;A2&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">420</span><span class="p">,</span> <span class="mi">594</span><span class="p">),</span>
+        <span class="s1">&#39;A3&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">297</span><span class="p">,</span> <span class="mi">420</span><span class="p">),</span>
+        <span class="s1">&#39;A4&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">210</span><span class="p">,</span> <span class="mi">297</span><span class="p">),</span>
+        <span class="s1">&#39;A5&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">148</span><span class="p">,</span> <span class="mi">210</span><span class="p">),</span>
+        <span class="s1">&#39;A6&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">105</span><span class="p">,</span> <span class="mi">148</span><span class="p">)</span>
+    <span class="p">}</span>
+    
+<div class="viewcode-block" id="DocResearcher.get_format">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.DocResearcher.get_format">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines the standard page format of a document based on its</span>
+<span class="sd">        dimensions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            width (float): The width of the document in millimeters.</span>
+<span class="sd">            height (float): The height of the document in millimeters.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: The name of the standard page format (e.g., &#39;A4&#39;) or custom dimensions as a string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="nb">format</span><span class="p">,</span> <span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">DOC_PAGE_SIZES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="n">w</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">height</span> <span class="o">-</span> <span class="n">h</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">format</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">width</span><span class="p">)</span><span class="si">}</span><span class="s1">x</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">height</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span></div>
+
+    
+<div class="viewcode-block" id="DocResearcher.get_orientation">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.DocResearcher.get_orientation">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_orientation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">section</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines the orientation of a document section.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            section (docx.section.Section): A section object from the document.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: &#39;landscape&#39; if the section is in landscape orientation, otherwise &#39;portrait&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;landscape&#39;</span> <span class="k">if</span> <span class="n">section</span><span class="o">.</span><span class="n">orientation</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="s1">&#39;portrait&#39;</span></div>
+
+    
+<div class="viewcode-block" id="DocResearcher.get_info">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.DocResearcher.get_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extracts metadata and format details from file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file (str): Path to the .docx file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary containing metadata and format information, including:</span>
+<span class="sd">                - author (str): Author of the document.</span>
+<span class="sd">                - created (str): Creation timestamp of the document.</span>
+<span class="sd">                - modified (str): Last modification timestamp.</span>
+<span class="sd">                - last_printed (str): Timestamp of the last print event.</span>
+<span class="sd">                - category (str): Document category.</span>
+<span class="sd">                - pages (int): Estimated number of pages (count of paragraphs).</span>
+<span class="sd">                - format (str): Page format (e.g., &#39;A4&#39;).</span>
+<span class="sd">                - orientation (str): Page orientation (&#39;landscape&#39; or &#39;portrait&#39;).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.docx&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">doc</span> <span class="o">=</span> <span class="n">Document</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="n">core_properties</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">core_properties</span>
+            <span class="n">section</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">sections</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;author&#39;</span><span class="p">:</span> <span class="n">core_properties</span><span class="o">.</span><span class="n">author</span><span class="p">,</span>
+                <span class="s1">&#39;created&#39;</span><span class="p">:</span> <span class="n">core_properties</span><span class="o">.</span><span class="n">created</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">core_properties</span><span class="o">.</span><span class="n">created</span> <span class="k">else</span> <span class="n">GeneralResearcher</span><span class="p">()</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="n">file</span><span class="p">)[</span><span class="s1">&#39;created&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;modified&#39;</span><span class="p">:</span> <span class="n">core_properties</span><span class="o">.</span><span class="n">modified</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">core_properties</span><span class="o">.</span><span class="n">modified</span> <span class="k">else</span> <span class="n">GeneralResearcher</span><span class="p">()</span><span class="o">.</span><span class="n">get_info</span><span class="p">(</span><span class="n">file</span><span class="p">)[</span><span class="s1">&#39;modified&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;last_printed&#39;</span><span class="p">:</span> <span class="n">core_properties</span><span class="o">.</span><span class="n">last_printed</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">core_properties</span><span class="o">.</span><span class="n">last_printed</span> <span class="k">else</span> <span class="s1">&#39;-&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;category&#39;</span><span class="p">:</span> <span class="n">core_properties</span><span class="o">.</span><span class="n">category</span><span class="p">,</span>
+                <span class="s1">&#39;pages&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">doc</span><span class="o">.</span><span class="n">paragraphs</span><span class="p">),</span>
+                <span class="s1">&#39;format&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_format</span><span class="p">(</span><span class="n">section</span><span class="o">.</span><span class="n">page_width</span> <span class="o">/</span> <span class="mi">36000</span><span class="p">,</span> <span class="n">section</span><span class="o">.</span><span class="n">page_height</span> <span class="o">/</span> <span class="mi">36000</span><span class="p">),</span> <span class="c1">#_EMUS_PER_MM = 36000 https://python-docx.readthedocs.io/en/latest/_modules/docx/shared.html</span>
+                <span class="s1">&#39;orientation&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_orientation</span><span class="p">(</span><span class="n">section</span><span class="p">)}</span></div>
+</div>
+
+            
+<div class="viewcode-block" id="PDFResearcher">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.PDFResearcher">[docs]</a>
+<span class="k">class</span> <span class="nc">PDFResearcher</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A researcher that gathers information about pdf files.&quot;&quot;&quot;</span>
+    <span class="n">PDF_PAGE_SIZES</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;A0&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">2384</span><span class="p">,</span> <span class="mi">3370</span><span class="p">),</span>
+        <span class="s1">&#39;A1&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">1684</span><span class="p">,</span> <span class="mi">2384</span><span class="p">),</span>
+        <span class="s1">&#39;A2&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">1191</span><span class="p">,</span> <span class="mi">1684</span><span class="p">),</span>
+        <span class="s1">&#39;A3&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">842</span><span class="p">,</span> <span class="mi">1191</span><span class="p">),</span>
+        <span class="s1">&#39;A4&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">595</span><span class="p">,</span> <span class="mi">842</span><span class="p">),</span>
+        <span class="s1">&#39;A5&#39;</span><span class="p">:</span> <span class="p">(</span><span class="mi">420</span><span class="p">,</span> <span class="mi">595</span><span class="p">)</span>
+    <span class="p">}</span>
+    
+<div class="viewcode-block" id="PDFResearcher.get_format">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.PDFResearcher.get_format">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines the standard page format of a pdf page based on its</span>
+<span class="sd">        dimensions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            width (float): The width of the pdf page in points.</span>
+<span class="sd">            height (float): The height of the pdf page in points.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: The name of the standard page format (e.g., &#39;A4&#39;) or custom dimensions as a string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="nb">format</span><span class="p">,</span> <span class="p">(</span><span class="n">w</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">PDF_PAGE_SIZES</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">abs</span><span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="n">w</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span> <span class="ow">and</span> <span class="nb">abs</span><span class="p">(</span><span class="n">height</span> <span class="o">-</span> <span class="n">h</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">10</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">format</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">width</span><span class="p">)</span><span class="si">}</span><span class="s1">x</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">height</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span></div>
+
+    
+<div class="viewcode-block" id="PDFResearcher.get_orientation">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.PDFResearcher.get_orientation">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_orientation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Determines the orientation of a pdf page.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            width (float): The width of the pdf page in points.</span>
+<span class="sd">            height (float): The height of the pdf page in points.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            str: &#39;landscape&#39; if the page is wider than it is tall, otherwise &#39;portrait&#39;.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;landscape&#39;</span> <span class="k">if</span> <span class="n">width</span> <span class="o">&gt;</span> <span class="n">height</span> <span class="k">else</span> <span class="s1">&#39;portrait&#39;</span></div>
+
+    
+<div class="viewcode-block" id="PDFResearcher.get_info">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.PDFResearcher.get_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extracts metadata and format details from file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file (str): Path to the pdf file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary containing metadata and format information, including:</span>
+<span class="sd">                - pages (int): Total number of pages in the pdf.</span>
+<span class="sd">                - format (str): Page format (e.g., &#39;A4&#39;).</span>
+<span class="sd">                - orientation (str): Orientation of the first page (&#39;landscape&#39; or &#39;portrait&#39;).</span>
+<span class="sd">                - metadata (dict): Metadata from the pdf file (e.g., title, author, etc.).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.pdf&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">pdf</span> <span class="o">=</span> <span class="n">PdfReader</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="n">page</span> <span class="o">=</span> <span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mediabox</span>
+            <span class="n">width</span><span class="p">,</span> <span class="n">height</span> <span class="o">=</span> <span class="n">page</span><span class="o">.</span><span class="n">width</span><span class="p">,</span> <span class="n">page</span><span class="o">.</span><span class="n">height</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;pages&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">pdf</span><span class="o">.</span><span class="n">pages</span><span class="p">),</span>
+                <span class="s1">&#39;format&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_format</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">),</span>
+                <span class="s1">&#39;orientation&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_orientation</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">),</span>
+                <span class="s1">&#39;metadata&#39;</span><span class="p">:</span> <span class="n">pdf</span><span class="o">.</span><span class="n">metadata</span>
+            <span class="p">}</span></div>
+</div>
+
+    
+<div class="viewcode-block" id="ExcelResearcher">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.ExcelResearcher">[docs]</a>
+<span class="k">class</span> <span class="nc">ExcelResearcher</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A researcher that gathers information about excel files.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="ExcelResearcher.get_info">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.ExcelResearcher.get_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extracts information from file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file (str): Path to the excel file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary containing information, including:</span>
+<span class="sd">                - sheets (int): Total number of sheets in the workbook.</span>
+<span class="sd">                - author (str): Author of the workbook.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.xlsx&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">wb</span> <span class="o">=</span> <span class="n">load_workbook</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;sheets&#39;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">wb</span><span class="o">.</span><span class="n">sheetnames</span><span class="p">),</span>
+                <span class="s1">&#39;author&#39;</span><span class="p">:</span> <span class="n">wb</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">creator</span>
+            <span class="p">}</span></div>
+</div>
+
+
+<div class="viewcode-block" id="AudioResearcher">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.AudioResearcher">[docs]</a>
+<span class="k">class</span> <span class="nc">AudioResearcher</span><span class="p">:</span> 
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A researcher class for extracting metadata from audio files.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="AudioResearcher.get_info">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.AudioResearcher.get_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extracts metadata from an MP3 file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file (str): Path to the MP3 file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary containing audio metadata, including:</span>
+<span class="sd">                - duration (float): Duration of the audio file in minutes.</span>
+<span class="sd">                - bitrate (int): Bitrate of the audio file in kbps.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.mp3&#39;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="p">{}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">audio</span> <span class="o">=</span> <span class="n">MP3</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;duration&#39;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">audio</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">length</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="c1">#min</span>
+                <span class="s1">&#39;bitrate&#39;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">audio</span><span class="o">.</span><span class="n">info</span><span class="o">.</span><span class="n">bitrate</span> <span class="o">/</span> <span class="mi">1000</span><span class="p">)</span>  <span class="c1">#kbps</span>
+                <span class="p">}</span></div>
+</div>
+
+    
+<div class="viewcode-block" id="VideoResearcher">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.VideoResearcher">[docs]</a>
+<span class="k">class</span> <span class="nc">VideoResearcher</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A researcher class for extracting metadata from video files.&quot;&quot;&quot;</span>
+<div class="viewcode-block" id="VideoResearcher.get_info">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.VideoResearcher.get_info">[docs]</a>
+    <span class="k">def</span> <span class="nf">get_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Extracts metadata from a video file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            file (str): Path to the video file.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A dictionary containing video metadata, including:</span>
+<span class="sd">                - width (int): Width of the video in pixels.</span>
+<span class="sd">                - height (int): Height of the video in pixels.</span>
+<span class="sd">                - fps (float): Frames per second of the video.</span>
+<span class="sd">                - duration (float): Duration of the video in minutes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">file</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s1">&#39;.mp4&#39;</span><span class="p">,</span> <span class="s1">&#39;.avi&#39;</span><span class="p">,</span> <span class="s1">&#39;.mkv&#39;</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="p">{}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">cap</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="n">file</span><span class="p">)</span>
+            <span class="n">width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">CAP_PROP_FRAME_WIDTH</span><span class="p">))</span>
+            <span class="n">height</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">CAP_PROP_FRAME_HEIGHT</span><span class="p">))</span>
+            <span class="n">fps</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">CAP_PROP_FPS</span><span class="p">)</span>
+            <span class="n">duration</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">CAP_PROP_FRAME_COUNT</span><span class="p">)</span> <span class="o">/</span> <span class="n">fps</span>
+            <span class="n">cap</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;width&#39;</span><span class="p">:</span> <span class="n">width</span><span class="p">,</span>
+                <span class="s1">&#39;height&#39;</span><span class="p">:</span> <span class="n">height</span><span class="p">,</span>
+                <span class="s1">&#39;fps&#39;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">fps</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+                <span class="s1">&#39;duration&#39;</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">duration</span> <span class="o">/</span> <span class="mi">60</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span> <span class="c1">#в минутах</span>
+                <span class="p">}</span></div>
+</div>
+
+    
+<div class="viewcode-block" id="Saver">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Saver">[docs]</a>
+<span class="k">class</span> <span class="nc">Saver</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Сlass for saving data to a CSV file.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes the Saver with a specified output file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            output_file (str): Path to the output CSV file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span> <span class="o">=</span> <span class="n">output_file</span>
+
+<div class="viewcode-block" id="Saver.save_scv">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Saver.save_scv">[docs]</a>
+    <span class="k">def</span> <span class="nf">save_scv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Saves data to a CSV file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data (list): A list of dictionaries containing the data to be saved.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;-&#39;</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+</div>
+
+        
+<div class="viewcode-block" id="Displayer">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Displayer">[docs]</a>
+<span class="k">class</span> <span class="nc">Displayer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Сlass for displaying summary and top-size file information from a CSV</span>
+<span class="sd">    file.&quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">output_file</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initializes the Displayer with a specified output file.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            output_file (str): Path to the CSV file used for display.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_file</span> <span class="o">=</span> <span class="n">output_file</span>
+
+<div class="viewcode-block" id="Displayer.display">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Displayer.display">[docs]</a>
+    <span class="k">def</span> <span class="nf">display</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text_widget</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Displays a summary of the file count and extension distribution in a</span>
+<span class="sd">        Tkinter text widget.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            text_widget (tk.Text): A Tkinter text widget where the summary will be displayed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_file</span><span class="p">)</span>
+        <span class="n">extension_counts</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;extension&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span>
+
+        <span class="n">total</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+        <span class="n">extension_summary</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">extension</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">count</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">extension</span><span class="p">,</span> <span class="n">count</span> <span class="ow">in</span> <span class="n">extension_counts</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+
+        <span class="n">summary</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Общее количество файлов: </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">Количество файлов по расширениям:</span><span class="se">\n</span><span class="si">{</span><span class="n">extension_summary</span><span class="si">}</span><span class="s2">&quot;</span>
+        
+        <span class="n">text_widget</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">tk</span><span class="o">.</span><span class="n">END</span><span class="p">)</span>
+        <span class="n">text_widget</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">tk</span><span class="o">.</span><span class="n">END</span><span class="p">,</span> <span class="n">summary</span><span class="p">)</span></div>
+
+        
+<div class="viewcode-block" id="Displayer.display_top_size_files">
+<a class="viewcode-back" href="../../collect.html#collect.stakanov_logic.Displayer.display_top_size_files">[docs]</a>
+    <span class="k">def</span> <span class="nf">display_top_size_files</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">results_area</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Displays the top 10 largest files in terms of size.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            data (list): A list of dictionaries containing file information, including sizes.</span>
+<span class="sd">            results_area (tk.Text): A Tkinter text widget where the top files will be displayed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">top_files</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">top_files</span><span class="p">:</span>
+            <span class="n">top_files_str</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">Топ 10 файлов по размеру:</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">file_info</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">top_files</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                <span class="n">size_formatted</span> <span class="o">=</span> <span class="n">humanize</span><span class="o">.</span><span class="n">naturalsize</span><span class="p">(</span><span class="n">file_info</span><span class="p">[</span><span class="s1">&#39;size&#39;</span><span class="p">],</span> <span class="n">binary</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">top_files_str</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">. </span><span class="si">{</span><span class="n">file_info</span><span class="p">[</span><span class="s1">&#39;file_path&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">size_formatted</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span>
+            
+            <span class="n">results_area</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">tk</span><span class="o">.</span><span class="n">END</span><span class="p">,</span> <span class="n">top_files_str</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">stakanov</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">stakanov</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, melondent.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
