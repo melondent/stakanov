@@ -419,3 +419,49 @@ class Saver:
         df = df.astype(object)
         df.fillna('-', inplace=True)
         df.to_csv(self.output_file, index=False)
+        
+class Displayer:
+    """Сlass for displaying summary and top-size file information from a CSV
+    file."""
+    def __init__(self, output_file):
+        """Initializes the Displayer with a specified output file.
+
+        Args:
+            output_file (str): Path to the CSV file used for display.
+        """
+        self.output_file = output_file
+
+    def display(self, text_widget):
+        """Displays a summary of the file count and extension distribution in a
+        Tkinter text widget.
+
+        Args:
+            text_widget (tk.Text): A Tkinter text widget where the summary will be displayed.
+        """
+        df = pd.read_csv(self.output_file)
+        extension_counts = df['extension'].value_counts()
+
+        total = len(df)
+        extension_summary = "\n".join([f"{extension}: {count}" for extension, count in extension_counts.items()])
+
+        summary = f"\nОбщее количество файлов: {total}\n\nКоличество файлов по расширениям:\n{extension_summary}"
+        
+        text_widget.delete(1.0, tk.END)
+        text_widget.insert(tk.END, summary)
+        
+    def display_top_size_files(self, data, results_area):
+        """Displays the top 10 largest files in terms of size.
+
+        Args:
+            data (list): A list of dictionaries containing file information, including sizes.
+            results_area (tk.Text): A Tkinter text widget where the top files will be displayed.
+        """
+        top_files = sorted(data, key=lambda x: x['size'], reverse=True)[:10]
+
+        if top_files:
+            top_files_str = "\n\nТоп 10 файлов по размеру:\n\n"
+            for idx, file_info in enumerate(top_files, start=1):
+                size_formatted = humanize.naturalsize(file_info['size'], binary=True)
+                top_files_str += f"{idx}. {file_info['file_path']} - {size_formatted}\n"
+            
+            results_area.insert(tk.END, top_files_str)
