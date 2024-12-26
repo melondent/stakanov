@@ -8,6 +8,10 @@
 
 `python3 src/stakanov/manage.py runserver`
 
+## Запуск тестов.
+
+`python3 src/stakanov/manage.py test files`
+
 
 
 
