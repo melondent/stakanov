@@ -12,6 +12,9 @@
 
 `python3 src/stakanov/manage.py test files`
 
+## Документация
+Полная документация доступна по адресу: [Stakanov Docs](https://melondent.github.io/stakanov/).
+
 
 
 
