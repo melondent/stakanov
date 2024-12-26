@@ -3,7 +3,17 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, Text, ttk
 
 class stakanovApp:
+    """Class to create the stakanov app, which allows scanning files in the
+    specified directory, retrieving information about them, and displaying the
+    results in the graphical interface.
+
+    Attributes:
+        master (tk.Tk): The main window of the application.
+    """
+    
     def __init__(self, master):
+        """Initialize the application."""
+        
         self.master = master
         master.title("stakanov")
 
@@ -37,6 +47,7 @@ class stakanovApp:
         self.hide_controls()
 
     def hide_controls(self):
+        """Hides control elements."""
         self.path_label.pack_forget()
         self.path_entry.pack_forget()
         self.browse_button.pack_forget()
@@ -47,6 +58,7 @@ class stakanovApp:
         self.progress_bar.pack_forget()
 
     def show_controls(self):
+        """Displays control elements."""
         self.path_label.pack()
         self.path_entry.pack()
         self.browse_button.pack()
@@ -62,11 +74,23 @@ class stakanovApp:
         self.start_button.pack_forget()
 
     def browse_directory(self):
+        """Opens a dialog window to select a directory and displays the
+        selected path in the input field.
+
+        If no directory is selected, the path remains empty.
+        """
         folder_selected = filedialog.askdirectory()
         self.path_entry.delete(0, tk.END)
         self.path_entry.insert(0, folder_selected)
 
     def start_scan(self):
+        """Starts the process of scanning files in the specified directory,
+        collecting information about the files, and displaying the results in
+        the output area.
+
+        If the specified path or output file name is empty, an error
+        message will be shown.
+        """
         path = self.path_entry.get()
         output_file = self.output_entry.get()
 
@@ -81,6 +105,8 @@ class stakanovApp:
             self.progress_bar['maximum'] = len(list(indi.guide.files()))
                 
             def update_progress(count, total_files):
+                """Updates the progress bar based on the number of processed
+                files."""
                 progress = int(count / total_files * 100)
                 self.progress_bar['value'] = progress
                 self.master.update_idletasks()

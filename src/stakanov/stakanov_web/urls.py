@@ -1,5 +1,4 @@
-"""
-URL configuration for stakanov_web project.
+"""URL configuration for stakanov_web project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.1/topics/http/urls/
@@ -19,10 +18,10 @@ from django.urls import path
 from files import views
 
 urlpatterns = [
-    path('', views.index, name='index'),  # Главная страница с индексацией
+    path('', views.index, name='index'),
     path('extension/', views.extension, name='extension'),
-    path('error/', views.error, name='extension'),
-    path('pdf/', views.pdf, name='pdf'),# Страница с результатами
+    path('error/', views.error, name='error'),
+    path('pdf/', views.pdf, name='pdf'),
     path('image/', views.image, name='image'),
-    path('size/', views.size, name='size'),# Страница с результатами
+    path('size/', views.size, name='size'),
 ]

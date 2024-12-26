@@ -8,10 +8,29 @@ import uuid
 
 
 def get_last_run_id(request):
+    """Retrieves the last run ID from the session.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+
+    Returns:
+        str or None: The run ID from the session, or None if no run ID is found.
+    """
     return request.session.get('last_run_id')
 
-
 def index(request):
+    """Handles the index page, allowing for file scanning and showing the total
+    file size. If the request method is POST, it starts the scanning process
+    for the specified folder. The folder path must be provided, and if it is
+    valid, the scanning process is initiated.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+
+    Returns:
+        JsonResponse or HttpResponse: Returns a JSON response on POST with scan results or errors,
+        or renders the 'index.html' template with total size information.
+    """
     if request.method == "POST":
         folder = request.POST.get('folder')
         if not folder:
@@ -43,6 +62,17 @@ def index(request):
 
 
 def extension(request):
+    """Displays statistics about file extensions for the last scan run.
+    Retrieves the total size of all files and the size of files from the last
+    run. Also gathers statistics on the number of occurrences of each file
+    extension.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+
+    Returns:
+        HttpResponse: Renders the 'extension.html' template with the relevant statistics.
+    """
     run_id = get_last_run_id(request)
     if not run_id:
         return render(request, 'files/error.html', {'error': "Запустите приложение для получения статистики."})
@@ -60,6 +90,17 @@ def extension(request):
     return render(request, 'files/extension.html', context)
 
 def pdf(request):
+    """Displays statistics for PDF files, specifically focusing on the top
+    documents by page count. Retrieves the total size of all files and the
+    total size from the last scan, and also displays the top 10 PDF files with
+    the most pages.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+
+    Returns:
+        HttpResponse: Renders the 'pdf.html' template with PDF statistics.
+    """
     run_id = get_last_run_id(request)
     if not run_id:
         return render(request, 'files/error.html', {'error': "Запустите приложение для получения статистики."})
@@ -77,6 +118,17 @@ def pdf(request):
     return render(request, 'files/pdf.html', context)
 
 def image(request):
+    """Displays statistics for image files, specifically focusing on the top
+    images by area. Retrieves the total size of all files and the total size
+    from the last scan, and also displays the top 10 images by area (width x
+    height).
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+
+    Returns:
+        HttpResponse: Renders the 'image.html' template with image statistics.
+    """
     run_id = get_last_run_id(request)
     if not run_id:
         return render(request, 'files/error.html', {'error': "Запустите приложение для получения статистики."})
@@ -93,6 +145,16 @@ def image(request):
     return render(request, 'files/image.html', context)
 
 def size(request):
+    """Displays statistics for the largest files, focusing on the top 10
+    largest files by size. Retrieves the total size of all files and the total
+    size from the last scan, and also displays the top 10 largest files.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+
+    Returns:
+        HttpResponse: Renders the 'size.html' template with size statistics.
+    """
     run_id = get_last_run_id(request)
     if not run_id:
         return render(request, 'files/error.html', {'error': "Запустите приложение для получения статистики."})
@@ -109,6 +171,15 @@ def size(request):
     return render(request, 'files/size.html', context)
 
 def error(request):
+    """Displays the error page with the total size of all files. This is shown
+    when no valid scan run exists or an error occurs during processing.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+
+    Returns:
+        HttpResponse: Renders the 'error.html' template with error information.
+    """
     total_size = FileInfo.objects.aggregate(Sum('size'))['size__sum'] or 0
    
     context = {
